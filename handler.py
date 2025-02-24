@@ -3,6 +3,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackContext
 from global_vars import check_channels, file_ids, admins, await_time
 from CMDHandle import delete_message_later
+from admin import load_user_ids, save_user_ids
+
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -76,7 +78,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(f'You said: {received_text}', reply_markup=reply_markup)
+        await update.message.reply_text(f"یکی از گزینه های زیر را انتخاب کنید:", reply_markup=reply_markup)
 
     try:
         d = context.user_data["awating_caption"]
@@ -91,5 +93,38 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("کپشن اضافه شد")
         context.user_data["awating_caption"] = False
         await update.message.reply_text(f"ایدی فایل : {id}\n لینک فایل: \n https://t.me/{bot_id}?start={id}")
+
+    if received_text == "ارسال پیام به همه":
+        context.user_data["send_message_to_all"] = True
+        await update.message.reply_text("پیام مورد نظر را ارسال کنید")
+
+    if context.user_data["send_message_to_all"]:
+
+        if not str(update.message.from_user.id) in admins:
+            await update.message.reply_text('شما اجازه انجام این کار را ندارید.')
+            return
         
+        user_ids = load_user_ids()
+        message = update.message
+        for user_id in user_ids:
+            try:
+                if message.text:
+                    await context.bot.send_message(chat_id=user_id, text=message.text)
+                elif message.photo:
+                    await context.bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption)
+                elif message.video:
+                    await context.bot.send_video(chat_id=user_id, video=message.video.file_id, caption=message.caption)
+                elif message.document:
+                    await context.bot.send_document(chat_id=user_id, document=message.document.file_id, caption=message.caption)
+                elif message.audio:
+                    await context.bot.send_audio(chat_id=user_id, audio=message.audio.file_id, caption=message.caption)
+                elif message.voice:
+                    await context.bot.send_voice(chat_id=user_id, voice=message.voice.file_id, caption=message.caption)
+                elif message.sticker:
+                    await context.bot.send_sticker(chat_id=user_id, sticker=message.sticker.file_id)
+                elif message.animation:
+                    await context.bot.send_animation(chat_id=user_id, animation=message.animation.file_id, caption=message.caption)
+            except Exception as e:
+                print(f"خطا در ارسال پیام به {user_id}: {e}")
+        context.user_data["send_message_to_all"] = False
         

@@ -2,20 +2,18 @@ import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler, ContextTypes
 from global_vars import file_ids, admins, check_channels, await_time
+from admin import load_user_ids, save_user_ids
 
 
 async def start(update: Update, context: CallbackContext) -> None:
     chat_id = update.message.chat_id
     args = context.args
-    if str(chat_id) in admins:
-        keyboard = [
-        ["مدیریت فایل", 'Button 2'],
-        ['Button 3', 'Button 4']
-    ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-        await update.message.reply_text('خوش امدید', reply_markup=reply_markup)
-        
-
+    user_id = update.message.from_user.id
+    user_ids = load_user_ids()
+    
+    if user_id not in user_ids:
+        user_ids.append(user_id)
+        save_user_ids(user_ids)
 
     if args:
         user_id = update.message.from_user.id
@@ -45,8 +43,20 @@ async def start(update: Update, context: CallbackContext) -> None:
                 join_channel.append([InlineKeyboardButton("عضو شدم", callback_data=f"send_file:{param}")])
                 reply_markup = InlineKeyboardMarkup(join_channel)
                 await update.message.reply_text("شما برای استفاده از ربات باید عضو کانال های زیر باشید:", reply_markup=reply_markup)
-    else:
-        await update.message.reply_text('No parameter found.')
+    
+    try:
+        context.user_data["active"]
+        
+    except:
+        if str(chat_id) in admins:
+            keyboard = [
+            ["مدیریت فایل",  "ارسال پیام به همه"],
+            ]
+            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+            context.user_data["active"] = True
+            await update.message.reply_text("خوش امدید",reply_markup=reply_markup)
+        
+        
         
 
 
